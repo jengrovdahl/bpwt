@@ -85,21 +85,11 @@ async function initMemberTable(){
     UNIQUE(item_id, member_name)
   )`);
 
-  // patch: add honor_hold column + add Debbie Johnson
-  const pd = await tq("SELECT value FROM cc_meta WHERE key='patch_debbie_honor'");
-  if (!pd?.rows?.length) {
-    try { await tq("ALTER TABLE bpwt_roster ADD COLUMN honor_hold INTEGER DEFAULT 0"); } catch(e){}
-    try { await tq("ALTER TABLE bpwt_roster ADD COLUMN notes TEXT"); } catch(e){}
-    // add Debbie as inactive but honor_hold
-    const existing = await tq("SELECT id FROM bpwt_roster WHERE first_name='Debbie' AND last_name='Johnson'");
-    if (!existing?.rows?.length) {
-      await tq(
-        "INSERT INTO bpwt_roster (first_name,last_name,email,phone,tri_due,join_date,birthday,active,honor_hold,notes) VALUES (?,?,?,?,?,?,?,0,1,?)",
-        ["Debbie","Johnson","dsjohnson9798@gmail.com","507-475-3112","2","1987-10-01","07/25","Past State President — required to retain on roster"]
-      );
-    }
-    await tq("INSERT OR REPLACE INTO cc_meta (key,value) VALUES ('patch_debbie_honor','done')");
-  }
+  // add Debbie Johnson (honor hold) if not present — safe to run every load
+  try { await tq("ALTER TABLE bpwt_roster ADD COLUMN honor_hold INTEGER DEFAULT 0"); } catch(e){}
+  try { await tq("ALTER TABLE bpwt_roster ADD COLUMN notes TEXT"); } catch(e){}
+  await tq("INSERT OR IGNORE INTO bpwt_roster (first_name,last_name,email,phone,tri_due,join_date,birthday,active,honor_hold,notes) VALUES (?,?,?,?,?,?,?,0,1,?)",
+    ["Debbie","Johnson","dsjohnson9798@gmail.com","507-475-3112","2","1987-10-01","07/25","Past State President — required to retain on roster"]);
 }
 async function tq(sql,args=[]){
   const r=await fetch(TURL+"/v2/pipeline",{method:"POST",headers:{Authorization:"Bearer "+TTOK,"Content-Type":"application/json"},
