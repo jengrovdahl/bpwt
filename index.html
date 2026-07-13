@@ -88,6 +88,7 @@ async function initMemberTable(){
 
   // add Debbie Johnson (honor hold) if not present — safe to run every load
   try { await tq("ALTER TABLE command_center_items ADD COLUMN wont_do INTEGER DEFAULT 0"); } catch(e){}
+  try { await tq("ALTER TABLE command_center_items ADD COLUMN level TEXT"); } catch(e){}
   try { await tq("ALTER TABLE bpwt_roster ADD COLUMN honor_hold INTEGER DEFAULT 0"); } catch(e){}
   try { await tq("ALTER TABLE bpwt_roster ADD COLUMN notes TEXT"); } catch(e){}
 
@@ -386,7 +387,33 @@ function RosterView({color}){
   </div>);
 }
 
+
+function LevelBadge({ item, saveField }) {
+  const LEVELS = ["LOCAL","MNWT","USWT"];
+  const LEVEL_COLORS = {
+    "LOCAL": { bg:"#EDE9FE", text:"#5B21B6" },
+    "MNWT":  { bg:"#DBEAFE", text:"#1E40AF" },
+    "USWT":  { bg:"#D1FAE5", text:"#065F46" },
+  };
+  const current = item.level || getLevel(item);
+  const cycle = async (e) => {
+    e.stopPropagation();
+    const next = LEVELS[(LEVELS.indexOf(current) + 1) % LEVELS.length];
+    await saveField(item.id, "level", next);
+  };
+  const lc = LEVEL_COLORS[current] || LEVEL_COLORS["LOCAL"];
+  return (
+    <span onClick={cycle} title="Tap to change level" style={{
+      fontSize:9,fontWeight:800,padding:"2px 6px",borderRadius:4,
+      background:lc.bg,color:lc.text,flexShrink:0,marginTop:2,
+      letterSpacing:"0.06em",cursor:"pointer",userSelect:"none",
+      border:"1px solid transparent",transition:"opacity 0.15s"
+    }}>{current}</span>
+  );
+}
+
 function getLevel(item) {
+  if (item.level) return item.level;
   const cat = item.category || "";
   const title = item.title || "";
   const notes = item.notes || "";
@@ -526,7 +553,7 @@ function App(){
               <div className="ib">
                 <div style={{display:"flex",alignItems:"flex-start",gap:6,flexWrap:"wrap"}}>
                 <TEdit value={item.title} dn={!isN&&dn} wd={wontdo(item.wont_do)} onChange={v=>sf(item.id,"title",v)}/>
-                {(()=>{const lvl=getLevel(item);const lc=LEVEL_COLORS[lvl];return<span style={{fontSize:9,fontWeight:800,padding:"2px 6px",borderRadius:4,background:lc.bg,color:lc.text,flexShrink:0,marginTop:2,letterSpacing:"0.06em"}}>{lvl}</span>;})()}
+                <LevelBadge item={item} saveField={saveField}/>
               </div>
                 {item.notes&&<NotesDisplay text={item.notes}/>}
                 {MEMBER_SELF_CATEGORIES.includes(item.category)&&<MemberTracker item={item} orgColor={CLR}/>}
